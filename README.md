@@ -4,6 +4,8 @@ An automated tool that diagnoses and suggests solutions for common VMware ESXi s
 
 ## Features
 
+![alt text](img/example.png "Example")
+
 - **Automated Log Collection**: Connects to ESXi hosts via SSH to collect system logs and configuration information
 - **Comprehensive Analysis**: Analyzes performance metrics, hardware status, VM states, and network configurations
 - **Issue Detection**: Automatically identifies common issues such as:
