@@ -1,8 +1,14 @@
 # ESXi Issue Analyzer
 
+[![CI](https://github.com/kekzl/esxi-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/kekzl/esxi-analyzer/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Code style: ruff-format](https://img.shields.io/badge/code%20style-ruff--format-000000.svg)](https://github.com/astral-sh/ruff)
+
 An automated tool that diagnoses and suggests solutions for common VMware ESXi server problems.
 
-![alt text](example.png "Example")
+![Example Report](example.png "Example")
 
 ## Features
 
@@ -32,21 +38,43 @@ An automated tool that diagnoses and suggests solutions for common VMware ESXi s
 
 ## Installation
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/yourusername/esxi-analyzer.git
-   cd esxi-analyzer
-   ```
+### Using uv (recommended)
 
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+```bash
+uv pip install git+https://github.com/kekzl/esxi-analyzer.git
+```
 
-3. Make the main script executable (Linux/Mac):
-   ```
-   chmod +x esxi_analyzer.py
-   ```
+### Using pip
+
+```bash
+pip install git+https://github.com/kekzl/esxi-analyzer.git
+```
+
+### From source
+
+```bash
+git clone https://github.com/kekzl/esxi-analyzer.git
+cd esxi-analyzer
+
+# Using uv (recommended)
+uv pip install -e .
+
+# Or using pip
+pip install -e .
+```
+
+### Development installation
+
+```bash
+git clone https://github.com/kekzl/esxi-analyzer.git
+cd esxi-analyzer
+
+# Install with development dependencies
+uv pip install -e ".[dev]"
+
+# Set up pre-commit hooks
+pre-commit install
+```
 
 ## Configuration
 
@@ -86,7 +114,7 @@ For improved security, you can use SSH key authentication instead of passwords:
 
 1. Generate an SSH key pair (if you don't have one):
    ```bash
-   ssh-keygen -t rsa -b 4096
+   ssh-keygen -t ed25519
    ```
 
 2. Copy the public key to your ESXi host:
@@ -98,13 +126,13 @@ For improved security, you can use SSH key authentication instead of passwords:
    ```yaml
    ssh:
      use_key_auth: true
-     key_file: "~/.ssh/id_rsa"
+     key_file: "~/.ssh/id_ed25519"
      verify_host_keys: true
    ```
 
 4. Run the analyzer without specifying a password:
    ```bash
-   python esxi_analyzer.py -H <esxi-host> -u root -o report.html
+   esxi-analyzer -H <esxi-host> -u root -o report.html
    ```
 
 ## Usage
@@ -113,17 +141,22 @@ For improved security, you can use SSH key authentication instead of passwords:
 
 Analyze a remote ESXi host with password:
 ```bash
-python esxi_analyzer.py -H <esxi-host> -u <username> -p <password> -o report.html -v
+esxi-analyzer -H <esxi-host> -u <username> -p <password> -o report.html -v
 ```
 
 Analyze using SSH key authentication:
 ```bash
-python esxi_analyzer.py -H <esxi-host> -u <username> -k ~/.ssh/id_rsa -o report.html -v
+esxi-analyzer -H <esxi-host> -u <username> -k ~/.ssh/id_ed25519 -o report.html -v
 ```
 
 Analyze previously collected logs:
 ```bash
-python esxi_analyzer.py -d /path/to/logs -o report.html -v
+esxi-analyzer -d /path/to/logs -o report.html -v
+```
+
+Or run directly with Python:
+```bash
+python esxi_analyzer.py -H <esxi-host> -u <username> -p <password> -o report.html -v
 ```
 
 Options:
@@ -139,8 +172,8 @@ Options:
 ### Web Interface
 
 Start the web interface:
-```
-python esxi_analyzer.py -w
+```bash
+esxi-analyzer -w
 ```
 
 This will launch a web browser pointing to http://localhost:8080 where you can:
@@ -158,7 +191,7 @@ The generated HTML report includes:
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - Paramiko >= 3.5.0 (SSH library for Python)
 - PyYAML >= 6.0.1 (for configuration management)
 - Network connectivity to ESXi hosts (for remote analysis)
@@ -173,28 +206,41 @@ The generated HTML report includes:
 - **Logging**: Sensitive information is not logged by default; adjust log level carefully
 - **Password Storage**: Password information is never stored persistently or written to disk
 
-## What's New
+## Development
 
-### Version 1.1 Improvements
+### Running tests
 
-- **SSH Key Authentication**: Secure authentication using SSH keys
-- **Configurable Thresholds**: Customize all analysis thresholds via config.yaml
-- **Professional Logging**: Structured logging with rotation and configurable levels
-- **Enhanced Security**:
-  - Host key verification support
-  - Automatic retry with exponential backoff
-  - Configurable connection timeouts
-- **Better Error Handling**: Comprehensive error recovery and detailed error messages
-- **Type Safety**: Full type hints throughout the codebase
-- **Improved Documentation**: Enhanced docstrings and user documentation
+```bash
+pytest
+```
+
+### Running linters
+
+```bash
+# Check code style
+ruff check .
+
+# Format code
+ruff format .
+
+# Type checking
+mypy lib
+```
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Run tests and linters (`pytest && ruff check .`)
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
 ## License
 
-This project is licensed under the terms included in the LICENSE file.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgements
 

@@ -8,7 +8,7 @@ This package provides modules for analyzing VMware ESXi hosts:
 - web_interface: Web-based user interface
 """
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 __author__ = "ESXi Analyzer Contributors"
 
 from . import collector
