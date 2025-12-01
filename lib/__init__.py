@@ -11,9 +11,6 @@ This package provides modules for analyzing VMware ESXi hosts:
 __version__ = "1.2.0"
 __author__ = "ESXi Analyzer Contributors"
 
-from . import collector
-from . import analyzer
-from . import report
-from . import web_interface
+from . import analyzer, collector, report, web_interface
 
-__all__ = ['collector', 'analyzer', 'report', 'web_interface']
+__all__ = ["analyzer", "collector", "report", "web_interface"]

@@ -2,19 +2,21 @@
 """
 ESXi Issue Analyzer - Report Generator Module
 """
-import os
+
+import builtins
+import contextlib
 import datetime
-import json
 import webbrowser
 from pathlib import Path
 
+
 class ReportGenerator:
     """Generates HTML reports with analysis results"""
-    
+
     def __init__(self, issues, host_info):
         """
         Initialize the report generator
-        
+
         Args:
             issues (list): List of detected issues
             host_info (str): ESXi host information
@@ -22,56 +24,44 @@ class ReportGenerator:
         self.issues = issues
         self.host_info = host_info
         self.timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     def generate_report(self, output_file):
         """
         Generate an HTML report with analysis results
-        
+
         Args:
             output_file (str): Path to save the HTML report
         """
         html_content = self._generate_html()
-        
-        with open(output_file, 'w') as f:
-            f.write(html_content)
-            
+
+        output_path = Path(output_file)
+        output_path.write_text(html_content)
+
         # Try to open the report in a web browser
-        try:
-            webbrowser.open('file://' + os.path.abspath(output_file))
-        except:
-            pass
-            
+        with contextlib.suppress(builtins.BaseException):
+            webbrowser.open("file://" + str(output_path.resolve()))
+
     def _generate_html(self):
         """Generate HTML content for the report"""
         # Count issues by severity
-        severity_counts = {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-        }
-        
+        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+
         for issue in self.issues:
             if issue.severity in severity_counts:
                 severity_counts[issue.severity] += 1
-        
+
         # Sort issues by severity (critical first)
-        severity_order = {
-            "critical": 0,
-            "high": 1, 
-            "medium": 2,
-            "low": 3
-        }
-        
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
         sorted_issues = sorted(self.issues, key=lambda x: severity_order.get(x.severity, 4))
-        
+
         # Group issues by category
         issues_by_category = {}
         for issue in sorted_issues:
             if issue.category not in issues_by_category:
                 issues_by_category[issue.category] = []
             issues_by_category[issue.category].append(issue)
-        
+
         # Generate HTML
         html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -192,7 +182,7 @@ class ReportGenerator:
         <p>Host: {self.host_info}</p>
         <p>Analysis Date: {self.timestamp}</p>
     </header>
-    
+
     <div class="summary">
         <div class="summary-box critical">
             <h3>Critical Issues</h3>
@@ -212,7 +202,7 @@ class ReportGenerator:
         </div>
     </div>
 """
-        
+
         # If no issues found
         if not self.issues:
             html += """
@@ -224,7 +214,8 @@ class ReportGenerator:
             <li>The collected data was insufficient for analysis</li>
             <li>There are issues present that the analyzer doesn't currently detect</li>
         </ul>
-        <p>It's always a good practice to regularly monitor your ESXi hosts and apply updates as recommended by VMware.</p>
+        <p>It's always a good practice to regularly monitor your ESXi hosts
+        and apply updates as recommended by VMware.</p>
     </div>
 """
         else:
@@ -234,30 +225,32 @@ class ReportGenerator:
         <h2>Table of Contents</h2>
         <ul>
 """
-            for category in issues_by_category:
+            for category, issues_list in issues_by_category.items():
                 # Format the category name for display
                 display_category = category.capitalize()
-                html += f'            <li><a href="#{category}">{display_category} Issues ({len(issues_by_category[category])})</a></li>\n'
-            
+                html += (
+                    f'            <li><a href="#{category}">{display_category} Issues ({len(issues_list)})</a></li>\n'
+                )
+
             html += """
         </ul>
     </div>
 """
-            
+
             # Generate content for each category
             for category, category_issues in issues_by_category.items():
                 # Format the category name for display
                 display_category = category.capitalize()
-                
+
                 html += f"""
     <div class="category-section" id="{category}">
         <h2>{display_category} Issues</h2>
 """
-                
+
                 for issue in category_issues:
                     # Create severity badge
                     severity_class = f"badge-{issue.severity}"
-                    
+
                     html += f"""
         <div class="issue {issue.severity}">
             <div class="issue-header">
@@ -265,21 +258,21 @@ class ReportGenerator:
                 <span class="severity-badge {severity_class}">{issue.severity.upper()}</span>
             </div>
             <p>{issue.description}</p>
-            
+
             <h4>Evidence:</h4>
             <div class="evidence">"""
-                    
+
                     for evidence in issue.evidence:
                         html += f"{evidence}\n"
-                        
+
                     html += f"""</div>
-            
+
             <h4>Recommended Solution:</h4>
             <div class="solution">
                 <p>{issue.solution}</p>
             </div>
 """
-                    
+
                     if issue.doc_links:
                         html += """
             <div class="links">
@@ -288,20 +281,20 @@ class ReportGenerator:
 """
                         for link in issue.doc_links:
                             html += f'                    <li><a href="{link}" target="_blank">{link}</a></li>\n'
-                            
+
                         html += """
                 </ul>
             </div>
 """
-                    
+
                     html += """
         </div>
 """
-                
+
                 html += """
     </div>
 """
-        
+
         # Close the HTML
         html += """
     <footer>
@@ -310,5 +303,5 @@ class ReportGenerator:
 </body>
 </html>
 """
-        
+
         return html

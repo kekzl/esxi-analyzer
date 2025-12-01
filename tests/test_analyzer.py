@@ -1,13 +1,13 @@
 """
 Unit tests for issue analyzer
 """
-import unittest
-import tempfile
-import os
-from pathlib import Path
 
 # Add parent directory to path for imports
 import sys
+import tempfile
+import unittest
+from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.analyzer import Issue, IssueAnalyzer
@@ -25,7 +25,7 @@ class TestIssue(unittest.TestCase):
             severity=Issue.SEVERITY_HIGH,
             evidence=["Evidence 1", "Evidence 2"],
             solution="Test solution",
-            doc_links=["https://kb.vmware.com/test"]
+            doc_links=["https://kb.vmware.com/test"],
         )
 
         self.assertEqual(issue.title, "Test Issue")
@@ -35,12 +35,7 @@ class TestIssue(unittest.TestCase):
 
     def test_issue_default_fields(self):
         """Test Issue creation with default fields"""
-        issue = Issue(
-            title="Test",
-            description="Test",
-            category=Issue.CATEGORY_CPU,
-            severity=Issue.SEVERITY_LOW
-        )
+        issue = Issue(title="Test", description="Test", category=Issue.CATEGORY_CPU, severity=Issue.SEVERITY_LOW)
 
         self.assertEqual(issue.evidence, [])
         self.assertEqual(issue.solution, "")
@@ -56,18 +51,17 @@ class TestIssueAnalyzer(unittest.TestCase):
         self.test_dir = tempfile.mkdtemp()
 
         # Create some test files
-        with open(os.path.join(self.test_dir, "system_version.txt"), "w") as f:
-            f.write("VMware ESXi 6.0.0 build-12345678")
-
-        with open(os.path.join(self.test_dir, "system_uptime.txt"), "w") as f:
-            f.write("up 200 days")
+        test_path = Path(self.test_dir)
+        (test_path / "system_version.txt").write_text("VMware ESXi 6.0.0 build-12345678")
+        (test_path / "system_uptime.txt").write_text("up 200 days")
 
         self.analyzer = IssueAnalyzer(self.test_dir, verbose=False)
 
     def tearDown(self):
         """Clean up test fixtures"""
         import shutil
-        if os.path.exists(self.test_dir):
+
+        if Path(self.test_dir).exists():
             shutil.rmtree(self.test_dir)
 
     def test_analyzer_initialization(self):
@@ -108,5 +102,5 @@ class TestIssueAnalyzer(unittest.TestCase):
         self.assertIsInstance(issues, list)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

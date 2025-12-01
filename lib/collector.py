@@ -5,18 +5,17 @@ ESXi Issue Analyzer - Log Collector Module
 This module handles SSH connection to ESXi hosts and collects logs,
 system information, and performance metrics for analysis.
 """
-import os
-import tempfile
-import shutil
-import socket
-import paramiko
-import time
-from pathlib import Path
-from typing import Optional, Dict, List
-from contextlib import contextmanager
 
-from .logger import logger
+import shutil
+import tempfile
+import time
+from contextlib import contextmanager
+from pathlib import Path
+
+import paramiko
+
 from .config import config
+from .logger import logger
 
 
 class LogCollector:
@@ -28,12 +27,7 @@ class LogCollector:
     """
 
     def __init__(
-        self,
-        host: str,
-        username: str,
-        password: Optional[str] = None,
-        key_file: Optional[str] = None,
-        verbose: bool = False
+        self, host: str, username: str, password: str | None = None, key_file: str | None = None, verbose: bool = False
     ):
         """
         Initialize the log collector.
@@ -51,18 +45,18 @@ class LogCollector:
         self.host = host
         self.username = username
         self.password = password
-        self.key_file = key_file or config.get_ssh('key_file')
+        self.key_file = key_file or config.get_ssh("key_file")
         self.verbose = verbose
-        self.collection_dir: Optional[str] = None
+        self.collection_dir: str | None = None
 
         # SSH configuration from config
-        self.timeout = config.get_ssh('timeout') or 30
-        self.command_timeout = config.get_ssh('command_timeout') or 60
-        self.retry_attempts = config.get_ssh('retry_attempts') or 3
-        self.retry_delay = config.get_ssh('retry_delay') or 2
-        self.verify_host_keys = config.get_ssh('verify_host_keys')
-        self.known_hosts_file = config.get_ssh('known_hosts_file')
-        self.use_key_auth = config.get_ssh('use_key_auth') or (key_file is not None)
+        self.timeout = config.get_ssh("timeout") or 30
+        self.command_timeout = config.get_ssh("command_timeout") or 60
+        self.retry_attempts = config.get_ssh("retry_attempts") or 3
+        self.retry_delay = config.get_ssh("retry_delay") or 2
+        self.verify_host_keys = config.get_ssh("verify_host_keys")
+        self.known_hosts_file = config.get_ssh("known_hosts_file")
+        self.use_key_auth = config.get_ssh("use_key_auth") or (key_file is not None)
 
         # Validate credentials
         if not self.use_key_auth and not password:
@@ -70,7 +64,7 @@ class LogCollector:
 
         if self.use_key_auth and not self.key_file:
             raise ValueError("key_file must be provided when use_key_auth is enabled")
-        
+
     @contextmanager
     def _ssh_connection(self):
         """
@@ -87,13 +81,13 @@ class LogCollector:
         # Configure host key verification
         if self.verify_host_keys:
             try:
-                known_hosts = os.path.expanduser(self.known_hosts_file)
-                if os.path.exists(known_hosts):
-                    ssh.load_host_keys(known_hosts)
+                known_hosts_path = Path(self.known_hosts_file).expanduser()
+                if known_hosts_path.exists():
+                    ssh.load_host_keys(str(known_hosts_path))
                     ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
-                    logger.info(f"Loaded known hosts from {known_hosts}")
+                    logger.info(f"Loaded known hosts from {known_hosts_path}")
                 else:
-                    logger.warning(f"Known hosts file not found: {known_hosts}")
+                    logger.warning(f"Known hosts file not found: {known_hosts_path}")
                     ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
             except Exception as e:
                 logger.warning(f"Error loading known hosts: {e}")
@@ -110,13 +104,13 @@ class LogCollector:
 
                 # Authentication
                 if self.use_key_auth:
-                    key_path = os.path.expanduser(self.key_file)
+                    key_path = Path(self.key_file).expanduser()
                     ssh.connect(
                         self.host,
                         username=self.username,
-                        key_filename=key_path,
+                        key_filename=str(key_path),
                         timeout=self.timeout,
-                        banner_timeout=self.timeout
+                        banner_timeout=self.timeout,
                     )
                     logger.info(f"Connected to {self.host} using SSH key authentication")
                 else:
@@ -125,7 +119,7 @@ class LogCollector:
                         username=self.username,
                         password=self.password,
                         timeout=self.timeout,
-                        banner_timeout=self.timeout
+                        banner_timeout=self.timeout,
                     )
                     logger.info(f"Connected to {self.host} using password authentication")
 
@@ -134,32 +128,30 @@ class LogCollector:
                 logger.info(f"Disconnected from {self.host}")
                 return
 
-            except (socket.timeout, socket.error) as e:
+            except (TimeoutError, OSError) as e:
                 last_error = e
                 logger.warning(f"Connection attempt {attempt + 1} failed: {e}")
                 if attempt < self.retry_attempts - 1:
-                    delay = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    delay = self.retry_delay * (2**attempt)  # Exponential backoff
                     logger.info(f"Retrying in {delay} seconds...")
                     time.sleep(delay)
             except paramiko.AuthenticationException as e:
                 last_error = e
                 logger.error(f"Authentication failed: {e}")
                 ssh.close()
-                raise ConnectionError(f"Authentication failed for {self.username}@{self.host}")
+                raise ConnectionError(f"Authentication failed for {self.username}@{self.host}") from e
             except Exception as e:
                 last_error = e
                 logger.error(f"SSH connection error: {e}")
                 ssh.close()
                 if attempt < self.retry_attempts - 1:
-                    delay = self.retry_delay * (2 ** attempt)
+                    delay = self.retry_delay * (2**attempt)
                     logger.info(f"Retrying in {delay} seconds...")
                     time.sleep(delay)
 
         # All attempts failed
         ssh.close()
-        raise ConnectionError(
-            f"Failed to connect to {self.host} after {self.retry_attempts} attempts: {last_error}"
-        )
+        raise ConnectionError(f"Failed to connect to {self.host} after {self.retry_attempts} attempts: {last_error}")
 
     def collect(self) -> str:
         """
@@ -202,22 +194,17 @@ class LogCollector:
                 logger.info("Collecting log files...")
                 self._collect_logs(ssh)
 
-            logger.info(f"Log collection completed successfully")
+            logger.info("Log collection completed successfully")
             return self.collection_dir
 
         except Exception as e:
             logger.error(f"Log collection failed: {e}")
-            if self.collection_dir and os.path.exists(self.collection_dir):
+            if self.collection_dir and Path(self.collection_dir).exists():
                 shutil.rmtree(self.collection_dir, ignore_errors=True)
-                logger.info(f"Cleaned up collection directory")
-            raise Exception(f"Failed to collect logs from {self.host}: {str(e)}")
-    
-    def _run_command(
-        self,
-        ssh: paramiko.SSHClient,
-        command: str,
-        output_file: str
-    ) -> None:
+                logger.info("Cleaned up collection directory")
+            raise RuntimeError(f"Failed to collect logs from {self.host}: {e!s}") from e
+
+    def _run_command(self, ssh: paramiko.SSHClient, command: str, output_file: str) -> None:
         """
         Execute a command via SSH and save output to a file.
 
@@ -232,19 +219,19 @@ class LogCollector:
         logger.debug(f"Executing command: {command}")
 
         try:
-            stdin, stdout, stderr = ssh.exec_command(command, timeout=self.command_timeout)
-            output = stdout.read().decode('utf-8', errors='replace')
-            error = stderr.read().decode('utf-8', errors='replace')
+            _stdin, stdout, stderr = ssh.exec_command(command, timeout=self.command_timeout)
+            output = stdout.read().decode("utf-8", errors="replace")
+            error = stderr.read().decode("utf-8", errors="replace")
 
-            output_path = os.path.join(self.collection_dir, output_file)
-            with open(output_path, 'w') as f:
+            output_path = Path(self.collection_dir) / output_file
+            with output_path.open("w") as f:
                 f.write(output)
                 if error:
                     f.write(f"\n\n--- STDERR ---\n{error}")
 
             logger.debug(f"Command output saved to {output_file}")
 
-        except socket.timeout:
+        except TimeoutError:
             logger.error(f"Command timed out after {self.command_timeout}s: {command}")
             raise
         except Exception as e:
@@ -258,14 +245,14 @@ class LogCollector:
         Args:
             ssh: Connected SSH client
         """
-        commands: Dict[str, str] = {
+        commands: dict[str, str] = {
             "version": "vmware -v",
             "system_info": "esxcli system version get",
             "uptime": "uptime",
             "hostname": "hostname",
             "time_info": "esxcli system time get",
             "boot_device": "esxcli system boot device get",
-            "licenses": "esxcli software license list"
+            "licenses": "esxcli software license list",
         }
 
         for name, cmd in commands.items():
@@ -281,13 +268,13 @@ class LogCollector:
         Args:
             ssh: Connected SSH client
         """
-        commands: Dict[str, str] = {
+        commands: dict[str, str] = {
             "cpu_info": "esxcli hardware cpu list",
             "cpu_stats": "esxtop -b -n 1 -d 5 -c",
             "memory_info": "esxcli hardware memory get",
             "system_stats": "esxcli system stats system get",
             "disk_latency": "esxcli storage core device stats get",
-            "io_stats": "esxtop -b -n 1 -d 5 -d"
+            "io_stats": "esxtop -b -n 1 -d 5 -d",
         }
 
         for name, cmd in commands.items():
@@ -303,12 +290,12 @@ class LogCollector:
         Args:
             ssh: Connected SSH client
         """
-        commands: Dict[str, str] = {
+        commands: dict[str, str] = {
             "storage_devices": "esxcli storage core device list",
             "hba_info": "esxcli storage core adapter list",
             "health_status": "esxcli hardware platform get",
             "sensors": "esxcli hardware sensor list",
-            "pci_devices": "lspci"
+            "pci_devices": "lspci",
         }
 
         for name, cmd in commands.items():
@@ -324,10 +311,10 @@ class LogCollector:
         Args:
             ssh: Connected SSH client
         """
-        commands: Dict[str, str] = {
+        commands: dict[str, str] = {
             "vm_list": "esxcli vm process list",
             "vm_stats": "esxtop -b -n 1 -d 5 -v",
-            "datastore_info": "esxcli storage filesystem list"
+            "datastore_info": "esxcli storage filesystem list",
         }
 
         for name, cmd in commands.items():
@@ -343,14 +330,14 @@ class LogCollector:
         Args:
             ssh: Connected SSH client
         """
-        commands: Dict[str, str] = {
+        commands: dict[str, str] = {
             "interfaces": "esxcli network ip interface list",
             "vswitches": "esxcli network vswitch standard list",
             "portgroups": "esxcli network vswitch standard portgroup list",
             "vmkernel": "esxcli network ip interface ipv4 get",
             "neighbors": "esxcli network ip neighbor list",
             "dns_info": "esxcli network ip dns server list",
-            "firewall_status": "esxcli network firewall get"
+            "firewall_status": "esxcli network firewall get",
         }
 
         for name, cmd in commands.items():
@@ -367,18 +354,18 @@ class LogCollector:
             ssh: Connected SSH client
         """
         # Create logs directory
-        logs_dir = os.path.join(self.collection_dir, "logs")
-        os.makedirs(logs_dir, exist_ok=True)
+        logs_dir = Path(self.collection_dir) / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
 
         # List of important logs to collect
-        log_files: List[str] = [
+        log_files: list[str] = [
             "/var/log/vmkernel.log",
             "/var/log/hostd.log",
             "/var/log/auth.log",
             "/var/log/syslog.log",
             "/var/log/vpxa.log",
             "/var/log/fdm.log",
-            "/var/log/esxi_install.log"
+            "/var/log/esxi_install.log",
         ]
 
         # Use SFTP to copy logs
@@ -392,11 +379,11 @@ class LogCollector:
                     logger.debug(f"Collecting log: {log_file}")
 
                     # Get the filename part
-                    filename = os.path.basename(log_file)
-                    local_path = os.path.join(logs_dir, filename)
+                    filename = Path(log_file).name
+                    local_path = logs_dir / filename
 
                     # Download the file
-                    sftp.get(log_file, local_path)
+                    sftp.get(log_file, str(local_path))
                     logger.debug(f"Downloaded {log_file}")
 
                 except FileNotFoundError:

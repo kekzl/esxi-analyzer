@@ -7,17 +7,12 @@ This module sets up and manages logging throughout the application.
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
-from typing import Optional
-from pathlib import Path
 
 from .config import config
 
 
 def setup_logger(
-    name: str = 'esxi_analyzer',
-    log_file: Optional[str] = None,
-    level: Optional[str] = None,
-    console: bool = True
+    name: str = "esxi_analyzer", log_file: str | None = None, level: str | None = None, console: bool = True
 ) -> logging.Logger:
     """
     Set up and configure logger for the application.
@@ -39,18 +34,15 @@ def setup_logger(
 
     # Get configuration
     if level is None:
-        level = config.get_logging('level') or 'INFO'
+        level = config.get_logging("level") or "INFO"
     if log_file is None:
-        log_file = config.get_logging('log_file') or 'esxi_analyzer.log'
+        log_file = config.get_logging("log_file") or "esxi_analyzer.log"
 
     log_level = getattr(logging, level.upper(), logging.INFO)
     logger.setLevel(log_level)
 
     # Create formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # Console handler
     if console:
@@ -62,14 +54,10 @@ def setup_logger(
     # File handler with rotation
     if log_file:
         try:
-            max_bytes = config.get_logging('max_bytes') or 10485760  # 10MB
-            backup_count = config.get_logging('backup_count') or 5
+            max_bytes = config.get_logging("max_bytes") or 10485760  # 10MB
+            backup_count = config.get_logging("backup_count") or 5
 
-            file_handler = RotatingFileHandler(
-                log_file,
-                maxBytes=max_bytes,
-                backupCount=backup_count
-            )
+            file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
             file_handler.setLevel(log_level)
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
