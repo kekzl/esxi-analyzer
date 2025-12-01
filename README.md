@@ -158,9 +158,9 @@ The generated HTML report includes:
 
 ## Requirements
 
-- Python 3.6+
-- Paramiko >= 2.7.2 (SSH library for Python)
-- PyYAML >= 5.4.1 (for configuration management)
+- Python 3.8+
+- Paramiko >= 3.5.0 (SSH library for Python)
+- PyYAML >= 6.0.1 (for configuration management)
 - Network connectivity to ESXi hosts (for remote analysis)
 - SSH enabled on ESXi hosts
 
